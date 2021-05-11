@@ -39,11 +39,10 @@ deploy:
   file_glob: true
   file:
     - 'dist/*.zip'
-  api_key:
-    secure: '${GH_TOKEN}'
+  api_key: ${GH_TOKEN}
   on:
     repo: wuyue92tree/nice-you-get
-    tag: true
+    tags: true
     all_branches: true
 branches:
   except:
