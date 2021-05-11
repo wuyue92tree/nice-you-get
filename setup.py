@@ -21,7 +21,7 @@ def main():
 
     if sys.platform == 'darwin':
         args.extend([
-            # '-w',
+            '-w',
             # '-i', os.path.join(BASE_DIR, 'icon/darwin/icon.icns')
         ])
     elif sys.platform == 'linux':
