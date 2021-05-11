@@ -1,0 +1,51 @@
+language: python
+matrix:
+  include:
+    - name: 'Python 3.7.4 on Xenial Linux'
+      python:
+        - '3.7.4'
+    - name: 'Python 3.7.4 on macOS'
+      os: osx
+      osx_image: xcode11.2  # macOS has python2 & python3 by default
+      language: shell
+    - name: 'Python 3.7.4 on Windows'
+      os: windows
+      language: shell
+      before_install:
+        - choco install python --version 3.7.4  # no command python3 will be create
+        - python -m pip install --upgrade pip
+      env: PATH=/c/Python37:/c/Python37/Scripts:$PATH
+
+install:
+  - pip3 install -r requirements.txt
+
+script:
+  - |
+    if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+      python3 setup.py -t build
+      zip -q -r dist/nice-you-get-$TRAVIS_OS_NAME-$TRAVIS_CPU_ARCH-$TRAVIS_TAG.zip dist/linux/*
+    elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      python3 setup.py -t build
+      zip -q -r dist/nice-you-get-$TRAVIS_OS_NAME-$TRAVIS_CPU_ARCH-$TRAVIS_TAG.zip dist/darwin/*.app
+    else
+      python setup.py -t build
+      7z a dist/nice-you-get-$TRAVIS_OS_NAME-$TRAVIS_CPU_ARCH-$TRAVIS_TAG.zip dist/win32/*.exe
+    fi
+deploy:
+  provider: releases
+  skip_cleanup: true
+  draft: true
+  overwrite: true
+  file_glob: true
+  file:
+    - 'dist/*.zip'
+  api_key: 
+    secure: '$GH_TOKEN'
+  on:
+    repo: wuyue92tree/nice-you-get
+    tag: true
+    all_branches: true
+branches:
+  except:
+    - develop
+    - master
