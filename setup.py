@@ -13,12 +13,12 @@ def update_windows():
     _dir_windows = os.path.join(settings.BASE_DIR, 'windows', 'ui')
     for file in os.listdir(_dir_ui):
         if file.endswith('.ui'):
-            os.system('PySide6-uic -o {} {}'.format(
+            os.system('pyside2-uic -o {} {}'.format(
                 os.path.join(_dir_windows, file).rstrip('.ui') + '.py',
                 os.path.join(_dir_ui, file)
             ))
     """将资源文件转换为py文件"""
-    # os.system('PySide6-rcc -o {} {}'.format(
+    # os.system('pyside2-rcc -o {} {}'.format(
     #     os.path.join(settings.BASE_DIR, 'resource_rc.py'),
     #     os.path.join(settings.BASE_DIR, 'resource.qrc')
     # ))
@@ -49,6 +49,7 @@ def build():
         ])
     elif sys.platform == 'win32':
         args.extend([
+            # '-w',
             '-F',
             # '-i', os.path.join(settings.BASE_DIR, 'icon/win32/icon.ico')
             ]
