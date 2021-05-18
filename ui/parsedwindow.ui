@@ -58,13 +58,6 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="searchLineEdit">
-        <property name="placeholderText">
-         <string>标题</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QComboBox" name="formatComboBox">
         <property name="minimumSize">
          <size>
