@@ -1,13 +1,14 @@
 # -*- coding: UTF-8 -*-
-from enum import Flag
 import sys
+import os
 import json
 from io import StringIO
 from PySide2 import QtGui
-from PySide2.QtWidgets import QAbstractItemView, QHeaderView, QMainWindow, QStyle, QStyleOptionButton, QTableWidgetItem
-from PySide2.QtCore import QRect, QThread, Qt, Signal, Slot
-from windows.ui import mainwindow, optionwindow, aboutwindow, parsedwindow
+from PySide2.QtWidgets import QAbstractItemView, QFileDialog, QHeaderView, QMainWindow, QStyle, QStyleOptionButton, QTableWidgetItem
+from PySide2.QtCore import QRect, QThread, QUrl, Qt, Signal, Slot
+from windows.ui import mainwindow, parsedwindow, downloadwindow
 from utils.logger import get_logger
+from utils.config import config
 from you_get.common import any_download
 
 logger = get_logger()
@@ -38,20 +39,36 @@ class ParseThread(QThread):
 
     def run(self):
         with RedirectedStdout() as out:
-            any_download(self.parent().linkLineEdit.text(), json_output=True)
+            any_download(self.parent().linkValueLabel.text(), json_output=True)
         self.finished.emit(str(out))
 
 
-class OptionWindow(QMainWindow, optionwindow.Ui_MainWindow):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setupUi(self)
+class DownloadThread(QThread):
+    output = Signal(str)
+    finished = Signal(str)
 
-
-class AboutWindow(QMainWindow, aboutwindow.Ui_MainWindow):
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setupUi(self)
+        super().__init__(parent=parent)
+
+    def run(self):
+        save_path = config.load().get('save_path')
+        merge = False if config.load().get('merge') == 0 else True
+        insecure = False if config.load().get('insecure') == 0 else True
+        caption = False if config.load().get('caption') == 0 else True
+        if not save_path:
+            os.mkdir(save_path)
+        with RedirectedStdout() as out:
+            any_download(
+                self.parent().linkValueLabel.text(), 
+                output_dir=save_path, 
+                output_filename=f'{self.parent().titleValueLabel.text()}_{self.parent().formatValueLabel.text()}',
+                merge=merge,
+                insecure=insecure,
+                caption=caption, 
+                stream_id=self.parent().formatValueLabel.text()
+            )
+            self.output.emit(str(out))
+        self.finished.emit(str(out))
 
 
 class QCheckableHeaderView(QHeaderView):
@@ -128,12 +145,12 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         self.parse_thread.start()
 
     def start_parse(self, url):
-        self.linkLineEdit.setText(url)
+        self.linkValueLabel.setText(url)
         logger.info(f'start parse: {url}')
         self._parse(url)
         
     def call_reparse(self):
-        url = self.linkLineEdit.text()
+        url = self.linkValueLabel.text()
         self.parsedTableWidget.clearContents()
         self.parsedTableWidget.setRowCount(0)
         self.formatComboBox.clear()
@@ -203,7 +220,7 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         self.parsedTableWidget.horizontalHeader().setSortIndicatorShown(True)
         self.parsedTableWidget.sortByColumn(self.format_index + 1, Qt.DescendingOrder)
         self.statusBar().showMessage(f'解析完成')
-        logger.info(f'parse finished: {self.linkLineEdit.text()}')
+        logger.info(f'parse finished: {self.linkValueLabel.text()}')
 
     def call_update_checkbox(self, item):
         check_state = item.checkState()
@@ -253,16 +270,48 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
 
     def call_download(self):
         logger.info(f'got {len(self.download_task_list)} download task: {self.download_task_list}')
+        for stream_id in self.download_task_list:
+            title = self.parsedTableWidget.item(stream_id, 0).text()
+            link = self.linkValueLabel.text()
+            format = self.parsedTableWidget.item(stream_id, self.format_index).text()
+            download_window = DownloadWindow(self, title, link, format)
+            download_window.show()
+
+
+class DownloadWindow(QMainWindow, downloadwindow.Ui_MainWindow):
+    def __init__(self, parent, title, link, format):
+        super(DownloadWindow, self).__init__(parent)
+        self.setupUi(self)
+        self.titleValueLabel.setText(title)
+        self.linkValueLabel.setText(link)
+        self.formatValueLabel.setText(format)
+
+        self.download_thread = DownloadThread(self)
+        self.statusBar().showMessage('开始下载')
+        self.download_thread.start()
+        self.download_thread.output.connect(self.update_log)
+        self.download_thread.finished.connect(self.download_finished)
+
+    def update_log(self, output):
+        self.textBrowser.setText(output)
+
+    def download_finished(self):
+        self.statusBar().showMessage('下载完成')
 
 
 class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
-        self.option_window = OptionWindow(self)
-        self.about_window = AboutWindow(self)
 
-        self.actionOptions.triggered.connect(self.render_option_window)
+        self.init_config()
+        self.mediaSavePushButton.clicked.connect(self.change_save_path)
+        self.mediaPathPushButton.clicked.connect(self.open_save_path_folder)
+
+        self.insecureCheckBox.stateChanged.connect(self.update_insecure_config)
+        self.downlaodCaptionheckBox.stateChanged.connect(self.update_download_caption_config)
+        self.mergeCheckBox.stateChanged.connect(self.update_merge_config)
+
         self.actionAbout.triggered.connect(self.render_about_window)
         self.parsePushButton.clicked.connect(self.render_parsed_window)
 
@@ -270,13 +319,40 @@ class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
         self.actionMinsize.triggered.connect(self.showMinimized)
         self.statusBar.showMessage('启动成功')
 
+    def init_config(self):
+        self.mediaPathValueLabel.setText(config.load().get('save_path'))
+        self.insecureCheckBox.setCheckState(Qt.CheckState(config.load().get('insecure')))
+        self.downlaodCaptionheckBox.setCheckState(Qt.CheckState(config.load().get('caption')))
+        self.mergeCheckBox.setCheckState(Qt.CheckState(config.load().get('merge')))
+
+    def change_save_path(self):
+        folder = QFileDialog.getExistingDirectory(self, "选择文件夹", "/")
+        logger.info(f'the new save_path {folder}')
+        config.save(save_path=folder)
+        self.mediaPathValueLabel.setText(folder)
+        logger.info(f'save_path change to {folder}')
+
+    def open_save_path_folder(self):
+        os.startfile(self.mediaPathValueLabel.text())
+
+    def update_insecure_config(self, states):
+        config.save(insecure=states)
+        logger.info(f'you-get insecure config update to {states}')
+
+    def update_download_caption_config(self, states):
+        config.save(caption=states)
+        logger.info(f'you-get caption config update to {states}')
+
+    def update_merge_config(self, states):
+        config.save(merge=states)
+        logger.info(f'you-get merge config update to {states}')
 
     def render_option_window(self):
         self.statusBar.showMessage('option_window called.')
         self.option_window.show()
 
     def render_about_window(self):
-        self.about_window.show()
+        QtGui.QDesktopServices.openUrl(QUrl('https://github.com/wuyue92tree/nice-you-get'))
 
     def render_parsed_window(self):
         link = self.linkLineEdit.text()
