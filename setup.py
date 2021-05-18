@@ -18,10 +18,10 @@ def update_windows():
                 os.path.join(_dir_ui, file)
             ))
     """将资源文件转换为py文件"""
-    # os.system('pyside2-rcc -o {} {}'.format(
-    #     os.path.join(settings.BASE_DIR, 'resource_rc.py'),
-    #     os.path.join(settings.BASE_DIR, 'resource.qrc')
-    # ))
+    os.system('pyside2-rcc -o {} {}'.format(
+        os.path.join(settings.BASE_DIR, 'resource_rc.py'),
+        os.path.join(settings.BASE_DIR, 'resource.qrc')
+    ))
 
 def build():
     update_windows()
