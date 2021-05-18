@@ -12,4 +12,6 @@ else:
 if os.path.exists(HOME_DIR) is False:
     os.makedirs(HOME_DIR)
 
+CONFIG_PATH = os.path.join(HOME_DIR, 'config.json')
+
 VERSION = '1.1.0'
