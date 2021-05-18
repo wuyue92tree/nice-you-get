@@ -58,7 +58,14 @@
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="titleComboBox">
+       <widget class="QLineEdit" name="searchLineEdit">
+        <property name="placeholderText">
+         <string>标题</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="formatComboBox">
         <property name="minimumSize">
          <size>
           <width>100</width>
@@ -73,13 +80,13 @@
         </property>
         <item>
          <property name="text">
-          <string>标题</string>
+          <string>媒体格式</string>
          </property>
         </item>
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="formatComboBox">
+       <widget class="QComboBox" name="containerComboBox">
         <property name="minimumSize">
          <size>
           <width>100</width>
@@ -113,9 +120,6 @@
        </spacer>
       </item>
      </layout>
-    </item>
-    <item row="2" column="0">
-     <widget class="QTableWidget" name="parsedTableWidget"/>
     </item>
     <item row="3" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -159,6 +163,9 @@
        </widget>
       </item>
      </layout>
+    </item>
+    <item row="2" column="0">
+     <widget class="QTableView" name="parsedTableView"/>
     </item>
    </layout>
   </widget>

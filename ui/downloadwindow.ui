@@ -84,7 +84,67 @@
        <item row="2" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
+          <widget class="QLabel" name="qualityLabel">
+           <property name="minimumSize">
+            <size>
+             <width>60</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>60</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>清晰度：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="qualityValueLabel">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="3" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
+         <item>
           <widget class="QLabel" name="formatLabel">
+           <property name="minimumSize">
+            <size>
+             <width>60</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>60</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>媒体格式：</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="formatValueLabel">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="4" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_5">
+         <item>
+          <widget class="QLabel" name="containerLabel">
            <property name="minimumSize">
             <size>
              <width>60</width>
@@ -103,7 +163,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="formatValueLabel">
+          <widget class="QLabel" name="containerValueLabel">
            <property name="text">
             <string/>
            </property>
