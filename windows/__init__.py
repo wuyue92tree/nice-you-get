@@ -161,7 +161,6 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         self.formatComboBox.currentIndexChanged.connect(self.on_formatComboBox_currentIndexChanged)
         self.container_list = []
         self.containerComboBox.currentIndexChanged.connect(self.on_containerComboBox_currentIndexChanged)
-        self.searchLineEdit.textChanged.connect(self.on_searchLineEdit_textChanged)
 
         self.reparsePushButton.clicked.connect(self.on_reparsePushButton_clicked)
         self.downloadSelectedPushButton.clicked.connect(self.on_downloadSelectedPushButton_clicked)
@@ -180,8 +179,6 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
     def on_reparsePushButton_clicked(self):
         url = self.linkValueLabel.text()
         self.model.removeRows( 0, self.model.rowCount())
-
-        self.searchLineEdit.clear()
 
         self.formatComboBox.clear()
         self.formatComboBox.addItem('媒体格式')
@@ -217,7 +214,8 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         self.global_checkbox = Qt.Unchecked
         self.parsedCheckableHeaderView.isOn = False
         self.parsedCheckableHeaderView.updateSection(0)
-
+        for row in range(self.model.rowCount()):
+            self.model.item(row, 0).setCheckState(Qt.Unchecked)
 
     def on_formatComboBox_currentIndexChanged(self, index):
         self.set_global_checkbox2unchecked()
@@ -234,14 +232,6 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
             QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp
         )
         self.proxy.setFilterByColumn(filter, self.format_index+1)
-
-    def on_searchLineEdit_textChanged(self, text):
-        self.set_global_checkbox2unchecked()
-        search = QRegExp(
-            f'*{text}' if text != '' else '.*',
-            QtCore.Qt.CaseInsensitive, QtCore.QRegExp.RegExp
-        )
-        self.proxy.setFilterByColumn(search, 0)
 
     def on_parse_thread_finished(self, data):
         data = json.loads(data)
@@ -277,7 +267,7 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
                     # 通过setData方法解决排序错误问题 (使用tableWidget时存在此问题)
                     # item.setData(Qt.EditRole, streams_values[row].get('size'))
                 elif title == '列表标题':
-                     item = QStandardItem(streams_keys[row])
+                    item = QStandardItem(streams_keys[row])
                 self.model.setItem(row, col, item)
 
         self.formatComboBox.addItems(set(self.format_list))
@@ -411,7 +401,10 @@ class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
         logger.info(f'save_path change to {folder}')
 
     def open_save_path_folder(self):
-        os.startfile(self.mediaPathValueLabel.text())
+        if sys.platform == 'darwin':
+            os.system(f'open {self.mediaPathValueLabel.text()}')
+        else:
+            os.startfile(self.mediaPathValueLabel.text())
 
     def update_insecure_config(self, states):
         config.save(insecure=states)
