@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>604</width>
-    <height>365</height>
+    <width>771</width>
+    <height>433</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,10 +19,16 @@
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QLabel" name="linkLabel">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="maximumSize">
          <size>
           <width>60</width>
-          <height>40</height>
+          <height>16777215</height>
          </size>
         </property>
         <property name="text">
@@ -46,7 +52,7 @@
         <property name="maximumSize">
          <size>
           <width>60</width>
-          <height>40</height>
+          <height>16777215</height>
          </size>
         </property>
         <property name="layoutDirection">
@@ -67,8 +73,8 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>100</width>
-          <height>40</height>
+          <width>16777215</width>
+          <height>16777215</height>
          </size>
         </property>
         <item>
@@ -88,8 +94,8 @@
         </property>
         <property name="maximumSize">
          <size>
-          <width>100</width>
-          <height>40</height>
+          <width>16777215</width>
+          <height>16777215</height>
          </size>
         </property>
         <item>
