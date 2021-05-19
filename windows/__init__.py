@@ -1,4 +1,5 @@
 # -*- coding: UTF-8 -*-
+from re import I
 import sys
 import os
 import json
@@ -10,7 +11,7 @@ from PySide2.QtCore import QRect, QRegExp, QThread, QUrl, Qt, Signal, Slot, QSor
 from windows.ui import mainwindow, parsedwindow, downloadwindow
 from utils.logger import get_logger
 from utils.config import config
-from you_get.common import any_download
+from utils.patch import any_download
 
 logger = get_logger()
 
@@ -45,8 +46,8 @@ class ParseThread(QThread):
 
 
 class DownloadThread(QThread):
-    output = Signal(str)
-    finished = Signal(str)
+    processUpdated = Signal(dict)
+    finished = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -58,18 +59,16 @@ class DownloadThread(QThread):
         caption = False if config.load().get('caption') == 0 else True
         if not save_path:
             os.mkdir(save_path)
-        with RedirectedStdout() as out:
-            any_download(
-                self.parent().linkValueLabel.text(), 
-                output_dir=save_path, 
-                output_filename=f'{self.parent().titleValueLabel.text()}_{self.parent().formatValueLabel.text()}',
-                merge=merge,
-                insecure=insecure,
-                caption=caption, 
-                stream_id=self.parent().formatValueLabel.text()
-            )
-            self.output.emit(str(out))
-        self.finished.emit(str(out))
+        any_download(
+            self.parent().linkValueLabel.text(), 
+            output_dir=save_path,
+            merge=merge,
+            insecure=insecure,
+            caption=caption, 
+            stream_id=self.parent().formatValueLabel.text(),
+            qt_signer=self.processUpdated
+        )
+        self.finished.emit(True)
 
 
 class QCheckableHeaderView(QHeaderView):
@@ -344,13 +343,18 @@ class DownloadWindow(QMainWindow, downloadwindow.Ui_MainWindow):
         self.download_thread = DownloadThread(self)
         self.statusBar().showMessage('开始下载')
         self.download_thread.start()
-        self.download_thread.output.connect(self.update_log)
-        self.download_thread.finished.connect(self.download_finished)
+        self.download_thread.processUpdated.connect(self.on_download_thread_processUpdated)
+        self.download_thread.finished.connect(self.on_download_thread_finished)
 
-    def update_log(self, output):
-        self.textBrowser.setText(output)
+    def on_download_thread_processUpdated(self, process):
+        # logger.debug(f'download process update {json.dumps(process)}')
+        self.downloadProgressBar.setValue(process.get('percent'))
+        if self.downloadProgressBar.value() == 100:
+            self.speedLabel.setText('done')
+            return
+        self.speedLabel.setText(process.get('speed').strip())
 
-    def download_finished(self):
+    def on_download_thread_finished(self):
         self.statusBar().showMessage('下载完成')
 
 
@@ -404,10 +408,6 @@ class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
     def update_merge_config(self, states):
         config.save(merge=states)
         logger.info(f'you-get merge config update to {states}')
-
-    def render_option_window(self):
-        self.statusBar.showMessage('option_window called.')
-        self.option_window.show()
 
     def render_about_window(self):
         QDesktopServices.openUrl(QUrl('https://github.com/wuyue92tree/nice-you-get'))
