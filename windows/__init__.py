@@ -149,7 +149,6 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         self.parsedTableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) # 设置自适应宽度
         self.parsedTableView.setEditTriggers(QAbstractItemView.NoEditTriggers)    # 禁用表格编辑
         self.parsedTableView.setSelectionBehavior(QAbstractItemView.SelectRows)   # 设置item选中时选择整行
-        
         self.parsedTableView.setModel(self.proxy)
         self.model.itemChanged.connect(self.on_model_itemChanged)
         self.sort_asc = False   # 排序
@@ -189,26 +188,6 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         logger.info(f'start reparse: {url}')
         self._parse(url)
 
-    def call_filter_table(self):
-        rows = self.model.rowCount()
-        if self.formatComboBox.currentIndex() == 0 and self.containerComboBox.currentIndex()==0:
-            for row in range(rows):
-                self.parsedTableView.setRowHidden(row, False)
-                self.model.item(row, 0).setCheckState(self.global_checkbox)
-        else:
-            format = self.formatComboBox.itemText(self.formatComboBox.currentIndex())
-            container = self.containerComboBox.itemText(self.containerComboBox.currentIndex())
-            for row in range(rows):
-                if self.model.item(row, self.format_index).text() == format \
-                    or self.model.item(row, self.format_index+1).text() == container:
-                    self.parsedTableView.setRowHidden(row, False)
-                    self.model.item(row, 0).setCheckState(self.global_checkbox)
-                else:
-                    item = self.model.item(row, 0)
-                    if item.checkState() == Qt.Checked:
-                        item.setCheckState(Qt.Unchecked)
-                    self.parsedTableView.setRowHidden(row, True)
-
     def set_global_checkbox2unchecked(self):
         # 切换过滤条件时，强制将所有checkbox值为unchecked
         self.global_checkbox = Qt.Unchecked
@@ -242,6 +221,10 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         self.format_list += streams_keys
         self.format_list.sort()
 
+        # 添加一个隐藏列，用于存储最初的行号
+        self.model.setHorizontalHeaderItem(len(self.table_titles), QStandardItem('origin_row_id'))
+        self.parsedTableView.setColumnHidden(len(self.table_titles), True)
+
         for row in range(rows):
             for col, title in enumerate(self.table_titles):
                 if title == '标题':
@@ -269,6 +252,9 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
                 elif title == '列表标题':
                     item = QStandardItem(streams_keys[row])
                 self.model.setItem(row, col, item)
+            
+            # 行号赋值
+            self.model.setItem(row, len(self.table_titles), QStandardItem(str(row)))
 
         self.formatComboBox.addItems(set(self.format_list))
         self.containerComboBox.addItems(set(self.container_list))
@@ -280,24 +266,20 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
 
     def on_model_itemChanged(self, item):
         check_state = item.checkState()
+        row = item.row()
+        
         if check_state == Qt.Checked:
-            stream_id = item.row()
-            if stream_id not in self.download_task_list:
-                self.download_task_list.append(stream_id)
-            show_rows = 0
+            if row not in self.download_task_list:
+                self.download_task_list.append(row)
 
             # 当显示行数与被选中行数一致时，将全局checkbox置为checked
-            for row in range(self.model.rowCount()):
-                if self.parsedTableView.isRowHidden(row) is False:
-                    show_rows += 1
-            if len(self.download_task_list) == show_rows:
+            if len(self.download_task_list) == self.proxy.rowCount():
                 if self.global_checkbox == Qt.Unchecked:
                     self.update_global_checkbox()
 
         elif check_state == Qt.Unchecked:
-            stream_id = item.row()
-            if stream_id in self.download_task_list:
-                self.download_task_list.remove(stream_id)
+            if row in self.download_task_list:
+                self.download_task_list.remove(row)
             
             # 任意显示行checkbox状态为unchecked时，将全局checkbox置为unchecked
             if self.global_checkbox == Qt.Checked:
@@ -322,7 +304,12 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
             # 第一列表头被点击时，切换全局checkbox状态
             if logicalIndex == 0:
                 self.update_global_checkbox()
-                self.call_filter_table()
+                for row in range(self.model.rowCount()):
+                            self.model.item(row, 0).setCheckState(Qt.Unchecked)
+
+                for row in range(self.proxy.rowCount()):
+                    origin_row_id = int(self.proxy.data(self.proxy.index(row, len(self.table_titles))))
+                    self.model.item(origin_row_id, 0).setCheckState(self.global_checkbox)
 
     def on_downloadSelectedPushButton_clicked(self):
         logger.info(f'got {len(self.download_task_list)} download task: {self.download_task_list}')
