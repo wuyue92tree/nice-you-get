@@ -166,23 +166,23 @@
             <rect>
              <x>9</x>
              <y>9</y>
-             <width>441</width>
-             <height>57</height>
+             <width>431</width>
+             <height>101</height>
             </rect>
            </property>
            <property name="title">
             <string>媒体保存</string>
            </property>
-           <layout class="QGridLayout" name="gridLayout_6">
-            <item row="0" column="0">
-             <widget class="QLabel" name="mediaPathValueLabel">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
              <layout class="QHBoxLayout" name="horizontalLayout_4">
+              <item>
+               <widget class="QLabel" name="mediaPathValueLabel">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
               <item>
                <spacer name="horizontalSpacer_3">
                 <property name="orientation">
@@ -233,6 +233,30 @@
                  <string>打开文件夹</string>
                 </property>
                </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_11">
+              <item>
+               <widget class="QCheckBox" name="saveOptionCheckBox">
+                <property name="text">
+                 <string>按站点及媒体格式保存</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_4">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
               </item>
              </layout>
             </item>
