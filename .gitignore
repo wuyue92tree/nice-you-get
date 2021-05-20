@@ -6,3 +6,4 @@ __pycache__/*
 
 windows/ui/*
 *.pyc
+resource_rc.py
