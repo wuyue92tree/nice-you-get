@@ -136,7 +136,14 @@
        </spacer>
       </item>
       <item>
-       <widget class="QPushButton" name="reparsePushButton">
+       <widget class="QPushButton" name="pauseParsePushButton">
+        <property name="text">
+         <string>暂停解析</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="reParsePushButton">
         <property name="maximumSize">
          <size>
           <width>60</width>
