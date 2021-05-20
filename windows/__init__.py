@@ -6,12 +6,15 @@ import json
 from io import StringIO
 from PySide2 import QtCore
 from PySide2.QtGui import QDesktopServices, QStandardItemModel, QStandardItem
-from PySide2.QtWidgets import QAbstractItemView, QFileDialog, QHeaderView, QMainWindow, QStyle, QStyleOptionButton
+from PySide2.QtWidgets import QAbstractItemView, QFileDialog, QHeaderView, QMainWindow, QMessageBox, QStyle, QStyleOptionButton
 from PySide2.QtCore import QRect, QRegExp, QThread, QUrl, Qt, Signal, Slot, QSortFilterProxyModel
 from windows.ui import mainwindow, parsedwindow, downloadwindow
+from you_get import version
+from conf.settings import VERSION
 from utils.logger import get_logger
 from utils.config import config
 from utils.patch import any_download
+from utils.exception import DownloadTreadStopException
 
 logger = get_logger()
 
@@ -47,28 +50,48 @@ class ParseThread(QThread):
 
 class DownloadThread(QThread):
     processUpdated = Signal(dict)
-    finished = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
+        self.stopFlag = False
+        self.forceReDownloadFlag = False
+
+    def start(self, *args, **kwargs):
+        self.stopFlag = False
+        super().start(*args, **kwargs)
+
+    def stop(self):
+        self.stopFlag = True
 
     def run(self):
-        save_path = config.load().get('save_path')
+        if config.load().get('media_save_option', 0) == 0:
+            save_path = config.load().get('save_path')
+        else:
+            save_path = os.path.join(
+                config.load().get('save_path'),
+                self.parent().siteValueLabel.text(), self.parent().formatValueLabel.text())
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
         merge = False if config.load().get('merge') == 0 else True
         insecure = False if config.load().get('insecure') == 0 else True
         caption = False if config.load().get('caption') == 0 else True
         if not save_path:
             os.mkdir(save_path)
-        any_download(
-            self.parent().linkValueLabel.text(), 
-            output_dir=save_path,
-            merge=merge,
-            insecure=insecure,
-            caption=caption, 
-            stream_id=self.parent().formatValueLabel.text(),
-            qt_signer=self.processUpdated
-        )
-        self.finished.emit(True)
+        try:
+            any_download(
+                self.parent().linkValueLabel.text(), 
+                output_dir=save_path,
+                merge=merge,
+                insecure=insecure,
+                caption=caption, 
+                stream_id=self.parent().formatValueLabel.text(),
+                qt_download_thread=self
+            )
+            self.forceReDownloadFlag = False
+        except DownloadTreadStopException:
+            logger.info('download thread stoped.')
+        except Exception as e:
+            logger.exception(e)
 
 
 class QCheckableHeaderView(QHeaderView):
@@ -123,7 +146,7 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
     def __init__(self, parent=None, is_playlist=False):
         super().__init__(parent)
         self.setupUi(self)
-        self.parse_thread = ParseThread(self)
+        self.parseThread = ParseThread(self)
         
         self.table_titles = ['标题', '站点', '清晰度', '媒体格式', '格式', '大小']
         self.format_index = 3
@@ -153,28 +176,36 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         self.sort_asc = False   # 排序
         self.global_checkbox = Qt.Unchecked # 全局checkbox选择器
 
-        self.parse_thread.finished.connect(self.on_parse_thread_finished)
+        self.parseThread.finished.connect(self.on_parseThread_finished)
 
         self.format_list = []
         self.formatComboBox.currentIndexChanged.connect(self.on_formatComboBox_currentIndexChanged)
         self.container_list = []
         self.containerComboBox.currentIndexChanged.connect(self.on_containerComboBox_currentIndexChanged)
 
-        self.reparsePushButton.clicked.connect(self.on_reparsePushButton_clicked)
+        self.reParsePushButton.clicked.connect(self.on_reParsePushButton_clicked)
+        self.pauseParsePushButton.clicked.connect(self.on_pauseParsePushButton_clicked)
         self.downloadSelectedPushButton.clicked.connect(self.on_downloadSelectedPushButton_clicked)
 
         self.download_task_list = []
 
     def _parse(self, url):
         self.statusBar().showMessage(f'开始解析: {url}')
-        self.parse_thread.start()
+        self.parseThread.start()
 
     def start_parse(self, url):
         self.linkValueLabel.setText(url)
         logger.info(f'start parse: {url}')
         self._parse(url)
-        
-    def on_reparsePushButton_clicked(self):
+
+    def on_pauseParsePushButton_clicked(self):
+        if self.parseThread.isRunning():
+            self.parseThread.terminate()
+            self.statusBar().showMessage('已暂停解析')
+        else:
+            self.statusBar().showMessage('没有活跃的解析进程')
+
+    def on_reParsePushButton_clicked(self):
         url = self.linkValueLabel.text()
         self.model.removeRows( 0, self.model.rowCount())
 
@@ -211,7 +242,7 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         )
         self.proxy.setFilterByColumn(filter, self.format_index+1)
 
-    def on_parse_thread_finished(self, data):
+    def on_parseThread_finished(self, data):
         data = json.loads(data)
         rows = len(data.get('streams'))
         streams_keys = list(data.get('streams').keys())
@@ -330,6 +361,9 @@ class DownloadWindow(QMainWindow, downloadwindow.Ui_MainWindow):
         self.linkValueLabel.setText(
             self.parent().linkValueLabel.text()
         )
+        self.siteValueLabel.setText(
+            self.parent().model.item(row, self.parent().format_index-2).text()
+        )
         self.qualityValueLabel.setText(
             self.parent().model.item(row, self.parent().format_index-1).text()
         )
@@ -340,22 +374,54 @@ class DownloadWindow(QMainWindow, downloadwindow.Ui_MainWindow):
             self.parent().model.item(row, self.parent().format_index+1).text()
         )
 
-        self.download_thread = DownloadThread(self)
+        self.downloadThread = DownloadThread(self)
         self.statusBar().showMessage('开始下载')
-        self.download_thread.start()
-        self.download_thread.processUpdated.connect(self.on_download_thread_processUpdated)
-        self.download_thread.finished.connect(self.on_download_thread_finished)
+        self.downloadThread.start()
+        self.downloadThread.processUpdated.connect(self.on_downloadThread_processUpdated)
 
-    def on_download_thread_processUpdated(self, process):
+        self.pauseDownloadPushButton.clicked.connect(self.on_pauseDownloadPushButton_clicked)
+        self.reDownloadPushButton.clicked.connect(self.on_reDownloadPushButton_clicked)
+        self.reDownloadPushButton.setDisabled(True)
+
+    def on_downloadThread_processUpdated(self, process):
         # logger.debug(f'download process update {json.dumps(process)}')
         self.downloadProgressBar.setValue(process.get('percent'))
         if self.downloadProgressBar.value() == 100:
             self.speedLabel.setText('done')
+            if process.get('isExist') is True:
+                self.statusBar().showMessage('媒体文件已存在')
+            else:
+                self.statusBar().showMessage('下载完成')
+            self.pauseDownloadPushButton.setDisabled(True)
+            self.reDownloadPushButton.setDisabled(False)
             return
         self.speedLabel.setText(process.get('speed').strip())
 
-    def on_download_thread_finished(self):
-        self.statusBar().showMessage('下载完成')
+    def on_pauseDownloadPushButton_clicked(self):
+        if self.downloadThread.isRunning():
+            self.pauseDownloadPushButton.setText('继续下载')
+            self.speedLabel.setText('--')
+            self.downloadThread.stop()
+            self.statusBar().showMessage('已停止下载')
+        else:
+            self.downloadThread.start()
+            self.pauseDownloadPushButton.setText('暂停下载')
+            self.statusBar().showMessage('已恢复下载')
+    
+    def on_reDownloadPushButton_clicked(self):
+        reply = QMessageBox.question(self, '警告', '重新下载将删除原有的媒体文件,\n你确认要继续吗？',
+                                           QMessageBox.Yes, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.downloadThread.stop()
+            self.downloadThread.forceReDownloadFlag = True
+            self.pauseDownloadPushButton.setDisabled(False)
+            self.statusBar().showMessage('开始重新下载')
+            self.downloadProgressBar.setValue(0)
+            self.speedLabel.setText('--')
+            self.downloadThread.start()
+            self.reDownloadPushButton.setDisabled(True)
+        else:
+            return
 
 
 class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
@@ -364,55 +430,71 @@ class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
         self.setupUi(self)
 
         self.init_config()
-        self.mediaSavePushButton.clicked.connect(self.change_save_path)
-        self.mediaPathPushButton.clicked.connect(self.open_save_path_folder)
+        self.niceYouGetValueLabel.setText(VERSION)
+        self.youGetValueLabel.setText(version.__version__)
 
-        self.insecureCheckBox.stateChanged.connect(self.update_insecure_config)
-        self.downlaodCaptionheckBox.stateChanged.connect(self.update_download_caption_config)
-        self.mergeCheckBox.stateChanged.connect(self.update_merge_config)
+        self.mediaSavePushButton.clicked.connect(self.on_mediaSavePushButton_clicked)
+        self.mediaPathPushButton.clicked.connect(self.on_mediaPathPushButton_clicked)
+        self.mediaSaveOptionCheckBox.stateChanged.connect(self.on_mediaSaveOptionCheckBox_stateChanged)
 
-        self.actionAbout.triggered.connect(self.render_about_window)
-        self.parsePushButton.clicked.connect(self.render_parsed_window)
+        self.insecureCheckBox.stateChanged.connect(self.on_insecureCheckBox_stateChanged)
+        self.downlaodCaptionheckBox.stateChanged.connect(self.on_downlaodCaptionheckBox_stateChanged)
+        self.mergeCheckBox.stateChanged.connect(self.on_mergeCheckBox_stateChanged)
+
+        self.actionAbout.triggered.connect(self.on_actionAbout_triggered)
+        self.parsePushButton.clicked.connect(self.on_parsePushButton_clicked)
 
         self.actionQuit.triggered.connect(self.close)
         self.actionMinsize.triggered.connect(self.showMinimized)
         self.statusBar.showMessage('启动成功')
 
+        self.proxyGroupBox.setHidden(True)
+
     def init_config(self):
         self.mediaPathValueLabel.setText(config.load().get('save_path'))
-        self.insecureCheckBox.setCheckState(Qt.CheckState(config.load().get('insecure')))
-        self.downlaodCaptionheckBox.setCheckState(Qt.CheckState(config.load().get('caption')))
-        self.mergeCheckBox.setCheckState(Qt.CheckState(config.load().get('merge')))
+        self.mediaSaveOptionCheckBox.setCheckState(Qt.CheckState(config.load().get('media_save_option', 0)))
+        self.insecureCheckBox.setCheckState(Qt.CheckState(config.load().get('insecure', 0)))
+        self.downlaodCaptionheckBox.setCheckState(Qt.CheckState(config.load().get('caption', 0)))
+        self.mergeCheckBox.setCheckState(Qt.CheckState(config.load().get('merge', 0)))
+        # self.proxyEnableCheckBox.setCheckState(Qt.CheckState(config.load().get('proxy_enable', 0)))
+        # self.hostLineEdit.setText(config.load().get('proxy_host', None))
+        # self.portLineEdit.setText(config.load().get('proxy_port', None))
+        # self.usernameLineEdit.set(config.load().get('proxy_username', None))
+        # self.passwordLineEdit.set(config.load().get('proxy_password', None))
 
-    def change_save_path(self):
+    def on_mediaSavePushButton_clicked(self):
         folder = QFileDialog.getExistingDirectory(self, "选择文件夹", "/")
         logger.info(f'the new save_path {folder}')
         config.save(save_path=folder)
         self.mediaPathValueLabel.setText(folder)
         logger.info(f'save_path change to {folder}')
 
-    def open_save_path_folder(self):
+    def on_mediaPathPushButton_clicked(self):
         if sys.platform == 'darwin':
             os.system(f'open {self.mediaPathValueLabel.text()}')
         else:
             os.startfile(self.mediaPathValueLabel.text())
 
-    def update_insecure_config(self, states):
+    def on_mediaSaveOptionCheckBox_stateChanged(self, states):
+        config.save(media_save_option=states)
+        logger.info(f'media save option update to {states}')
+
+    def on_insecureCheckBox_stateChanged(self, states):
         config.save(insecure=states)
         logger.info(f'you-get insecure config update to {states}')
 
-    def update_download_caption_config(self, states):
+    def on_downlaodCaptionheckBox_stateChanged(self, states):
         config.save(caption=states)
         logger.info(f'you-get caption config update to {states}')
 
-    def update_merge_config(self, states):
+    def on_mergeCheckBox_stateChanged(self, states):
         config.save(merge=states)
         logger.info(f'you-get merge config update to {states}')
 
-    def render_about_window(self):
+    def on_actionAbout_triggered(self):
         QDesktopServices.openUrl(QUrl('https://github.com/wuyue92tree/nice-you-get'))
 
-    def render_parsed_window(self):
+    def on_parsePushButton_clicked(self):
         link = self.linkLineEdit.text()
         if not link:
             self.statusBar.showMessage('目标链接不能为空')

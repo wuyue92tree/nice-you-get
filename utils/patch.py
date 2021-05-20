@@ -2,22 +2,25 @@ import os
 import sys
 from you_get.common import *
 from utils.logger import get_logger
+from utils.exception import DownloadTreadStopException
 
 logger = get_logger()
 
 url = 'https://www.bilibili.com/video/BV1H64y1U7GJ?spm_id_from=333.851.b_7265636f6d6d656e64.1'
 
-
 class QtSimpleProgressBar(SimpleProgressBar):
-    def __init__(self, total_size, total_pieces, qt_signer):
+    def __init__(self, total_size, total_pieces, qt_download_thread):
         super().__init__(total_size, total_pieces=total_pieces)
-        self.qt_signer = qt_signer
+        self.qt_download_thread = qt_download_thread
 
     def update(self):
+        if self.qt_download_thread.stopFlag is True:
+            raise DownloadTreadStopException('stoped')
+
         percent = round(self.received * 100 / self.total_size, 1)
         if percent >= 100:
             percent = 100
-        self.qt_signer.emit({
+        self.qt_download_thread.processUpdated.emit({
             'speed': self.speed,
             'percent': percent
         })
@@ -66,9 +69,13 @@ def download_urls(
     output_filename = get_output_filename(urls, title, ext, output_dir, merge)
     output_filepath = os.path.join(output_dir, output_filename)
 
-    qt_signer = kwargs.get('qt_signer', None)
-    logger.debug('get_qt_siginer')
-    logger.debug(qt_signer)
+    qt_download_thread = kwargs.get('qt_download_thread', False)
+    force = qt_download_thread.forceReDownloadFlag
+
+    # 媒体文件已存在，且强制下载为真时，直接删除原始文件
+    if force and os.path.exists(output_filepath):
+        os.remove(output_filepath)
+
     if total_size:
         if not force and os.path.exists(output_filepath) and not auto_rename\
                 and (os.path.getsize(output_filepath) >= total_size * 0.9\
@@ -78,16 +85,23 @@ def download_urls(
             else:
                 log.w('Skipping %s: file already exists' % output_filepath)
             print()
+            qt_download_thread.processUpdated.emit({
+                'speed': '--',
+                'percent': 100,
+                'isExist': True
+            })
             return
-        if qt_signer:
-            bar = QtSimpleProgressBar(total_size, len(urls), kwargs.get('qt_signer'))
+        
+        if qt_download_thread:
+            bar = QtSimpleProgressBar(total_size, len(urls), kwargs.get('qt_download_thread'))
         else:
             bar = SimpleProgressBar(total_size, len(urls))
     else:
-        if qt_signer:
-            bar = QtPiecesProgressBar(total_size, len(urls), kwargs.get('qt_signer'))
+        if qt_download_thread:
+            bar = QtPiecesProgressBar(total_size, len(urls), kwargs.get('qt_download_thread'))
         else:
             bar = PiecesProgressBar(total_size, len(urls))
+
 
     if len(urls) == 1:
         url = urls[0]
@@ -266,7 +280,7 @@ def monkey_patch_you_get_module(m):
                     download_urls(urls, self.title, ext, total_size, headers=headers,
                                 output_dir=kwargs['output_dir'],
                                 merge=kwargs['merge'],
-                                av=stream_id in self.dash_streams, qt_signer=kwargs['qt_signer'])
+                                av=stream_id in self.dash_streams, qt_download_thread=kwargs['qt_download_thread'])
 
                     if 'caption' not in kwargs or not kwargs['caption']:
                         print('Skipping captions or danmaku.')

@@ -1,7 +1,7 @@
 import sys
 import os
 import you_get
-from PySide2.QtWidgets import QApplication, QLabel
+from PySide2.QtWidgets import QApplication
 from windows import MainWindow
 from utils.logger import get_logger
 
