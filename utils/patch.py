@@ -1,12 +1,30 @@
 import os
 import sys
-from you_get.common import *
+from you_get.common import (
+    SimpleProgressBar,
+    PiecesProgressBar,
+    json_output,
+    json_output_,
+    dry_run,
+    print_user_agent,
+    player,
+    launch_player,
+    urls_size,
+    tr,
+    get_filename,
+    get_output_filename,
+    auto_rename,
+    skip_existing_file_size_check,
+    log,
+    url_save,
+    url_to_module
+)
 from utils.logger import get_logger
 from utils.exception import DownloadTreadStopException
 
 logger = get_logger()
 
-url = 'https://www.bilibili.com/video/BV1H64y1U7GJ?spm_id_from=333.851.b_7265636f6d6d656e64.1'
+# url = 'https://www.bilibili.com/video/BV1H64y1U7GJ?spm_id_from=333.851.b_7265636f6d6d656e64.1'
 
 class QtSimpleProgressBar(SimpleProgressBar):
     def __init__(self, total_size, total_pieces, qt_download_thread):
