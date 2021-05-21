@@ -148,11 +148,17 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         self.setupUi(self)
         self.parseThread = ParseThread(self)
         
-        self.table_titles = ['标题', '站点', '清晰度', '媒体格式', '格式', '大小']
+        self.table_titles = [
+            self.tr('标题'), self.tr('站点'), self.tr('清晰度'), 
+            self.tr('媒体格式'), self.tr('格式'), self.tr('大小')
+        ]
         self.format_index = 3
         self.size_index = 5
         if is_playlist:
-            self.table_titles = ['标题', '列表标题', '站点', '清晰度','媒体格式', '格式', '大小']
+            self.table_titles = [
+                self.tr('标题'), self.tr('列表标题'), self.tr('站点'), self.tr('清晰度'), 
+                self.tr('媒体格式'), self.tr('格式'), self.tr('大小')
+            ]
             self.format_index = 4
             self.size_index = 6
 
@@ -190,7 +196,7 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
         self.download_task_list = []
 
     def _parse(self, url):
-        self.statusBar().showMessage(f'开始解析: {url}')
+        self.statusBar().showMessage(self.tr(f'开始解析: {url}'))
         self.parseThread.start()
 
     def start_parse(self, url):
@@ -201,19 +207,19 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
     def on_pauseParsePushButton_clicked(self):
         if self.parseThread.isRunning():
             self.parseThread.terminate()
-            self.statusBar().showMessage('已暂停解析')
+            self.statusBar().showMessage(self.tr('已暂停解析'))
         else:
-            self.statusBar().showMessage('没有活跃的解析进程')
+            self.statusBar().showMessage(self.tr('没有活跃的解析进程'))
 
     def on_reParsePushButton_clicked(self):
         url = self.linkValueLabel.text()
         self.model.removeRows( 0, self.model.rowCount())
 
         self.formatComboBox.clear()
-        self.formatComboBox.addItem('媒体格式')
+        self.formatComboBox.addItem(self.tr('媒体格式'))
 
         self.containerComboBox.clear()
-        self.containerComboBox.addItem('格式')
+        self.containerComboBox.addItem(self.tr('格式'))
 
         logger.info(f'start reparse: {url}')
         self._parse(url)
@@ -257,29 +263,29 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
 
         for row in range(rows):
             for col, title in enumerate(self.table_titles):
-                if title == '标题':
+                if title == self.tr('标题'):
                     item = QStandardItem(data.get('title'))
                     item.setCheckState(Qt.Unchecked)
                     item.setCheckable(True)
                     item.setToolTip(data.get('title'))
-                elif title == '站点':
+                elif title == self.tr('站点'):
                     item = QStandardItem(data.get('site'))
                     item.setTextAlignment(Qt.AlignCenter)
-                elif title == '清晰度':
+                elif title == self.tr('清晰度'):
                     item = QStandardItem(streams_values[row].get('quality'))
                     item.setTextAlignment(Qt.AlignCenter)
-                elif title == '媒体格式':
+                elif title == self.tr('媒体格式'):
                     item = QStandardItem(streams_keys[row])
                     item.setTextAlignment(Qt.AlignCenter)
-                elif title == '格式':
+                elif title == self.tr('格式'):
                     item = QStandardItem(streams_values[row].get('container'))
                     item.setTextAlignment(Qt.AlignCenter)
                     self.container_list.append(item.text())
-                elif title == '大小':
+                elif title == self.tr('大小'):
                     item = QStandardItem(str(streams_values[row].get('size')))
                     # 通过setData方法解决排序错误问题 (使用tableWidget时存在此问题)
                     # item.setData(Qt.EditRole, streams_values[row].get('size'))
-                elif title == '列表标题':
+                elif title == self.tr('列表标题'):
                     item = QStandardItem(streams_keys[row])
                 self.model.setItem(row, col, item)
             
@@ -291,7 +297,7 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
 
         self.parsedTableView.horizontalHeader().setSortIndicatorShown(True)
         self.parsedTableView.sortByColumn(self.size_index, Qt.DescendingOrder)
-        self.statusBar().showMessage(f'解析完成')
+        self.statusBar().showMessage(self.tr(f'解析完成'))
         logger.info(f'parse finished: {self.linkValueLabel.text()}')
 
     def on_model_itemChanged(self, item):
@@ -314,7 +320,7 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
             # 任意显示行checkbox状态为unchecked时，将全局checkbox置为unchecked
             if self.global_checkbox == Qt.Checked:
                 self.update_global_checkbox()
-        self.statusBar().showMessage(f'已选中 {len(self.download_task_list)} 个')
+        self.statusBar().showMessage(self.tr(f'已选中 {len(self.download_task_list)} 个'))
 
     def update_global_checkbox(self):
         status = self.parsedCheckableHeaderView.updateCheckBox()
@@ -344,7 +350,7 @@ class ParsedWindow(QMainWindow, parsedwindow.Ui_MainWindow):
     def on_downloadSelectedPushButton_clicked(self):
         logger.info(f'got {len(self.download_task_list)} download task: {self.download_task_list}')
         if len(self.download_task_list) > 1:
-            self.statusBar().showMessage('暂不支持多个媒体同时下载')
+            self.statusBar().showMessage(self.tr('暂不支持多个媒体同时下载'))
             return 
         for row in self.download_task_list:
             download_window = DownloadWindow(self, row)
@@ -375,7 +381,7 @@ class DownloadWindow(QMainWindow, downloadwindow.Ui_MainWindow):
         )
 
         self.downloadThread = DownloadThread(self)
-        self.statusBar().showMessage('开始下载')
+        self.statusBar().showMessage(self.tr('开始下载'))
         self.downloadThread.start()
         self.downloadThread.processUpdated.connect(self.on_downloadThread_processUpdated)
 
@@ -389,9 +395,9 @@ class DownloadWindow(QMainWindow, downloadwindow.Ui_MainWindow):
         if self.downloadProgressBar.value() == 100:
             self.speedLabel.setText('done')
             if process.get('isExist') is True:
-                self.statusBar().showMessage('媒体文件已存在')
+                self.statusBar().showMessage(self.tr('媒体文件已存在'))
             else:
-                self.statusBar().showMessage('下载完成')
+                self.statusBar().showMessage(self.tr('下载完成'))
             self.pauseDownloadPushButton.setDisabled(True)
             self.reDownloadPushButton.setDisabled(False)
             return
@@ -399,23 +405,25 @@ class DownloadWindow(QMainWindow, downloadwindow.Ui_MainWindow):
 
     def on_pauseDownloadPushButton_clicked(self):
         if self.downloadThread.isRunning():
-            self.pauseDownloadPushButton.setText('继续下载')
+            self.pauseDownloadPushButton.setText(self.tr('继续下载'))
             self.speedLabel.setText('--')
             self.downloadThread.stop()
-            self.statusBar().showMessage('已停止下载')
+            self.statusBar().showMessage(self.tr('已停止下载'))
         else:
             self.downloadThread.start()
-            self.pauseDownloadPushButton.setText('暂停下载')
-            self.statusBar().showMessage('已恢复下载')
+            self.pauseDownloadPushButton.setText(self.tr('暂停下载'))
+            self.statusBar().showMessage(self.tr('已恢复下载'))
     
     def on_reDownloadPushButton_clicked(self):
-        reply = QMessageBox.question(self, '警告', '重新下载将删除原有的媒体文件,\n你确认要继续吗？',
-                                           QMessageBox.Yes, QMessageBox.No)
+        reply = QMessageBox.question(
+            self, self.tr('警告'), self.tr('重新下载将删除原有的媒体文件,\n你确认要继续吗？'),
+            QMessageBox.Yes, QMessageBox.No
+        )
         if reply == QMessageBox.Yes:
             self.downloadThread.stop()
             self.downloadThread.forceReDownloadFlag = True
             self.pauseDownloadPushButton.setDisabled(False)
-            self.statusBar().showMessage('开始重新下载')
+            self.statusBar().showMessage(self.tr('开始重新下载'))
             self.downloadProgressBar.setValue(0)
             self.speedLabel.setText('--')
             self.downloadThread.start()
@@ -446,7 +454,7 @@ class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
 
         self.actionQuit.triggered.connect(self.close)
         self.actionMinsize.triggered.connect(self.showMinimized)
-        self.statusBar.showMessage('启动成功')
+        self.statusBar.showMessage(self.tr('启动成功'))
 
         self.proxyGroupBox.setHidden(True)
 
@@ -463,7 +471,9 @@ class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
         # self.passwordLineEdit.set(config.load().get('proxy_password', None))
 
     def on_mediaSavePushButton_clicked(self):
-        folder = QFileDialog.getExistingDirectory(self, "选择文件夹", "/")
+        folder = QFileDialog.getExistingDirectory(self, self.tr("选择文件夹"), "/")
+        if not folder:
+            return
         logger.info(f'the new save_path {folder}')
         config.save(save_path=folder)
         self.mediaPathValueLabel.setText(folder)
@@ -497,7 +507,7 @@ class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
     def on_parsePushButton_clicked(self):
         link = self.linkLineEdit.text()
         if not link:
-            self.statusBar.showMessage('目标链接不能为空')
+            self.statusBar.showMessage(self.tr('目标链接不能为空'))
         else:
             parsed_window = ParsedWindow(self)
             parsed_window.show()
