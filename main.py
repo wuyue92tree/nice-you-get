@@ -1,12 +1,5 @@
 import sys
 import io
-import os
-from PySide2.QtWidgets import QApplication
-from windows import MainWindow
-from utils.logger import get_logger
-
-logger = get_logger()
-
 
 # fix pyinstaller --windowed issue case by you_get.
 # you_get will modify sys.stdout.buffer, but when packaged, stdout bin 
@@ -16,6 +9,14 @@ logger = get_logger()
 # https://github.com/pyinstaller/pyinstaller/issues/1883
 if "NullWriter" in str(type(sys.stdout)):
     sys.stdout.buffer = io.BytesIO()
+
+
+import os
+from PySide2.QtWidgets import QApplication
+from windows import MainWindow
+from utils.logger import get_logger
+
+logger = get_logger()
 
 
 if __name__ == '__main__':
