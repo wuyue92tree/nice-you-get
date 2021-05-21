@@ -1,5 +1,8 @@
 <RCC>
   <qresource prefix="qss">
-    <file>qss/style.qss</file>
+    <file>static/qss/style.qss</file>
+  </qresource>
+  <qresource prefix="icon">
+    <file>static/icon/logo.png</file>
   </qresource>
 </RCC>
