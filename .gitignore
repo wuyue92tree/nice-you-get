@@ -3,5 +3,8 @@ dist/*
 spec/*
 .vscode/*
 __pycache__/*
-
+.env/*
+windows/ui/*
 *.pyc
+*.pyo
+resource_rc.py
