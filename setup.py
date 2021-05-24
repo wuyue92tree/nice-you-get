@@ -5,7 +5,7 @@ import subprocess
 from optparse import OptionParser
 from conf import settings
 
-app_name = 'nice-you-get'
+app_name = 'NiceYouGet'
 
 def update_windows():
     """将ui文件转换为py文件"""
@@ -34,31 +34,33 @@ def build():
         '--hidden-import', 'you_get.extractors',
         '--hidden-import', 'you_get.cli_wrapper',
         '--hidden-import', 'you_get.processor',
-        '--hidden-import', 'you_get.util'
+        '--hidden-import', 'you_get.util',
+        '--additional-hooks-dir', os.path.join(settings.BASE_DIR, 'hooks')
+        # '--debug', 'all'
     ]
 
     if sys.platform == 'darwin':
         args.extend([
             '-w',
-            # '-i', os.path.join(settings.BASE_DIR, 'icon/darwin/icon.icns')
+            # '-i', os.path.join(settings.BASE_DIR, 'static/icon/darwin/icon.icns')
         ])
     elif sys.platform == 'linux':
         args.extend([
             '-F',
-            # '-i', os.path.join(settings.BASE_DIR, 'icon/linux/icon.png')
+            # '-i', os.path.join(settings.BASE_DIR, 'static/icon/linux/icon.png')
         ])
     elif sys.platform == 'win32':
         args.extend([
-            # '-w',
+            '-w',
             '-F',
-            # '-i', os.path.join(settings.BASE_DIR, 'icon/win32/icon.ico')
+            # '-c',
+            '-i', os.path.join(settings.BASE_DIR, 'static/icon/win32/icon.ico')
             ]
         )
         args.insert(0, '/c')
         args.insert(0, 'cmd')
 
     args.extend(['main.py'])
-    print(' '.join(args))
 
     subprocess.run(args)
 
