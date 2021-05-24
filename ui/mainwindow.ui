@@ -50,7 +50,7 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
+        <layout class="QHBoxLayout" name="linkHorizontalLayout">
          <item>
           <widget class="QLabel" name="linkLabel">
            <property name="minimumSize">
@@ -76,7 +76,7 @@
         </layout>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <layout class="QHBoxLayout" name="cookieHorizontalLayout">
          <item>
           <widget class="QLabel" name="cookieLabel">
            <property name="minimumSize">

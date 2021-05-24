@@ -457,6 +457,8 @@ class MainWindow(QMainWindow, mainwindow.Ui_MainWindow):
         self.statusBar.showMessage(self.tr('启动成功'))
 
         self.proxyGroupBox.setHidden(True)
+        self.cookieLabel.setHidden(True)
+        self.cookieTextEdit.setHidden(True)
 
     def init_config(self):
         self.mediaPathValueLabel.setText(config.load().get('save_path'))
