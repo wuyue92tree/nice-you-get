@@ -42,17 +42,17 @@ def build():
     if sys.platform == 'darwin':
         args.extend([
             '-w',
-            # '-i', os.path.join(settings.BASE_DIR, 'static/icon/darwin/icon.icns')
+            '-i', os.path.join(settings.BASE_DIR, 'static/icon/darwin/icon.icns')
         ])
     elif sys.platform == 'linux':
         args.extend([
             '-F',
-            # '-i', os.path.join(settings.BASE_DIR, 'static/icon/linux/icon.png')
+            '-i', os.path.join(settings.BASE_DIR, 'static/icon/linux/icon.png')
         ])
     elif sys.platform == 'win32':
         args.extend([
             '-w',
-            '-F',
+            # '-F',
             # '-c',
             '-i', os.path.join(settings.BASE_DIR, 'static/icon/win32/icon.ico')
             ]
