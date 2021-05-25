@@ -28,10 +28,10 @@ script:
       zip -q -r dist/nice-you-get-$TRAVIS_OS_NAME-$TRAVIS_TAG.zip dist/linux/*
     elif [ "$TRAVIS_OS_NAME" == "osx" ]; then
       python3 setup.py -t build
-      zip -q -r dist/nice-you-get-$TRAVIS_OS_NAME-$TRAVIS_TAG.zip dist/drawin/*.app
+      zip -q -r dist/nice-you-get-$TRAVIS_OS_NAME-$TRAVIS_TAG.zip dist/darwin/*.app
     else
       python setup.py -t build
-      makensis -V3 -DPRODUCT_VERSION='$TRAVIS_TAG' script.nsi
+      makensis -V3 -DPRODUCT_VERSION=$TRAVIS_TAG script.nsi
       7z a dist/nice-you-get-$TRAVIS_OS_NAME-$TRAVIS_TAG.zip dist/win32/*
     fi
 deploy:
