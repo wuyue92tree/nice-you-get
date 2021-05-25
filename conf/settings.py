@@ -19,4 +19,4 @@ if os.path.exists(LOG_DIR) is False:
 
 CONFIG_PATH = os.path.join(HOME_DIR, 'config.json')
 
-VERSION = '1.1.0b0'
+VERSION = '1.1.0b1'
